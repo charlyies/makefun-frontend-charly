@@ -79,6 +79,7 @@ async function renderBoard() {
     for (const id of ['filter', 'sort', 'open-only']) {
       document.getElementById(id)?.addEventListener('input', applyBoardFilter);
     }
+    applyBoardFilter(); // honour the default "Still open only" on first paint
     window.__shotReady = true;
   } catch (err) {
     fail(err);

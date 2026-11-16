@@ -45,8 +45,9 @@ export function board(data) {
   const items = (data.items || []).slice();
   return `
     <h1>Open bounties</h1>
-    <p class="lede">Live bounties on make.fun — reward is the live pot, prize plus entry fees paid in.
-    A bounty past its deadline is closed even while its status still reads open.</p>
+    <p class="lede">Live bounties on make.fun — reward is the live pot (prize plus entry fees
+    paid in) where the API publishes one. A bounty past its deadline is closed
+    even while its status still reads open.</p>
     <div class="toolbar">
       <label>Search <input id="filter" type="search" placeholder="Filter by title or category…" autocomplete="off"></label>
       <label>Sort
@@ -101,7 +102,7 @@ export function bounty(b) {
       ${b.entryFeeUsd ? `<dt>Entry fee</dt><dd>${money(b.entryFeeUsd)}</dd>` : '<dt>Entry fee</dt><dd>Free</dd>'}
       <dt>Deadline</dt><dd><span data-deadline="${esc(b.deadline)}">${date(b.deadline)} (${timeLeft(b.deadline)})</span></dd>
       <dt>Entries</dt><dd>${entries(b.submissionCount)}</dd>
-      <dt>Status</dt><dd>${statusBadge(b)} ${esc(b.status || '')}</dd>
+      <dt>Status</dt><dd>${statusBadge(b)}</dd>
       ${b.sponsor?.name ? `<dt>Sponsor</dt><dd>${esc(b.sponsor.name)}${b.sponsor.isVerified ? ' ✓' : ''}</dd>` : ''}
       ${b.category ? `<dt>Category</dt><dd>${esc(b.category)}</dd>` : ''}
     </dl>
