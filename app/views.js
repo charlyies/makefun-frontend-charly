@@ -1,7 +1,7 @@
 // The four surfaces, each a function from API data to HTML. Every surface is
 // reachable by a link and by its own hash route (see main.js).
 
-import { date, entries, esc, money, stillOpen, timeLeft, winRate } from './format.js';
+import { compact, date, entries, esc, money, ordinal, score, scoreLabel, stillOpen, timeLeft } from './format.js';
 
 /** The reward as it stands now: the prize plus entry fees paid into it. */
 export function pot(bounty) {
@@ -24,6 +24,13 @@ export function statusBadge(bounty) {
     : '<span class="badge closed">Closed</span>';
 }
 
+/** The skills a bounty asks for, as small chips (the API's `skills` array). */
+export function skillsChips(bounty) {
+  const skills = bounty.skills || [];
+  if (!skills.length) return '';
+  return `<span class="skills" aria-label="Skills">${skills.map((s) => `<span class="chip">${esc(s)}</span>`).join('')}</span>`;
+}
+
 /** One board row: title, pot, fee, time left, entries. */
 function boardRow(b) {
   return `
@@ -31,6 +38,7 @@ function boardRow(b) {
         <div class="row-main">
           <a class="row-title" href="#/bounty/${encodeURIComponent(b.slug)}">${esc(b.title)}</a>
           <span class="row-meta">${esc(b.category || '')}${b.sponsor?.name ? ` · by ${esc(b.sponsor.name)}` : ''}</span>
+          ${skillsChips(b)}
         </div>
         <span class="row-pot" title="Live pot: prize plus entry fees paid in">${pot(b)}</span>
         <span class="row-fee">${b.entryFeeUsd ? `${money(b.entryFeeUsd)} fee` : 'Free entry'}</span>
@@ -47,7 +55,8 @@ export function board(data) {
     <h1>Open bounties</h1>
     <p class="lede">Live bounties on make.fun — reward is the live pot (prize plus entry fees
     paid in) where the API publishes one. A bounty past its deadline is closed
-    even while its status still reads open.</p>
+    even while its status still reads open. Press <kbd>/</kbd> to jump to the
+    filter.</p>
     <div class="toolbar">
       <label>Search <input id="filter" type="search" placeholder="Filter by title or category…" autocomplete="off"></label>
       <label>Sort
@@ -76,7 +85,7 @@ function rewardsTable(bounty) {
   if (Array.isArray(now) && now.length) {
     const rows = now
       .map(
-        (r) => `<tr><td>${Number(r.place)}</td><td>${money(r.amountUsd)}</td>
+        (r) => `<tr><td>${ordinal(r.place)}</td><td>${money(r.amountUsd)}</td>
           <td class="dim">${money(r.baseUsd)} prize + ${money(r.feeShareUsd)} fees</td></tr>`,
       )
       .join('');
@@ -86,7 +95,7 @@ function rewardsTable(bounty) {
   const places = Object.keys(map).sort((a, b) => Number(a) - Number(b));
   if (!places.length) return '<p>No rewards table published yet.</p>';
   const rows = places
-    .map((p) => `<tr><td>${esc(p)}</td><td>${money(map[p])}</td><td class="dim">prize</td></tr>`)
+    .map((p) => `<tr><td>${ordinal(p)}</td><td>${money(map[p])}</td><td class="dim">prize</td></tr>`)
     .join('');
   return `<table class="rewards"><thead><tr><th>Place</th><th>Reward</th><th>Split</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -97,9 +106,10 @@ export function bounty(b) {
     <p class="crumbs"><a href="#/">All bounties</a> · <a href="#/bounty/${encodeURIComponent(b.slug)}/leaderboard">Leaderboard</a></p>
     <h1>${esc(b.title)}</h1>
     <p class="lede">${esc(b.summary || '')}</p>
+    ${skillsChips(b)}
     <dl class="facts">
       <dt>Reward (live pot)</dt><dd>${pot(b)}</dd>
-      ${b.entryFeeUsd ? `<dt>Entry fee</dt><dd>${money(b.entryFeeUsd)}</dd>` : '<dt>Entry fee</dt><dd>Free</dd>'}
+      ${b.entryFeeUsd ? `<dt>Entry fee</dt><dd>${money(b.entryFeeUsd)}${b.entryFeePayers ? ` · ${compact(b.entryFeePayers)} paid` : ''}</dd>` : '<dt>Entry fee</dt><dd>Free</dd>'}
       <dt>Deadline</dt><dd><span data-deadline="${esc(b.deadline)}">${date(b.deadline)} (${timeLeft(b.deadline)})</span></dd>
       <dt>Entries</dt><dd>${entries(b.submissionCount)}</dd>
       <dt>Status</dt><dd>${statusBadge(b)}</dd>
@@ -129,27 +139,33 @@ export function entryRow(s) {
     </li>`;
 }
 
-/** A bounty's leaderboard: ranked entries with win rates. */
+/** A bounty's leaderboard: ranked entries with their score. The score column
+ *  adapts to what the bounty scores — the judge's win rate for judged
+ *  bounties, Elo for rated ones, a plain number otherwise. The top three
+ *  rows carry a rank class so the stylesheet can mark them. */
 export function leaderboard(data) {
   const c = data.competition || {};
-  const rows = (data.entries || [])
+  const list = data.entries || [];
+  const label = scoreLabel(list[0]?.values);
+  const rows = list
     .map(
-      (e) => `<tr>
-        <td>${Number(e.rank)}</td>
+      (e) => `<tr${Number(e.rank) <= 3 ? ` class="rank-${Number(e.rank)}"` : ''}>
+        <td>${ordinal(e.rank)}</td>
         <td><span class="who">${avatar(e.image, e.handle)}<a href="#/profile/${encodeURIComponent(e.handle)}">${esc(e.handle)}</a></span></td>
         <td>${esc(e.title || '')}</td>
-        <td>${winRate(e.values?.judge)}</td>
-        <td>${e.values?.valid ?? '—'}</td>
+        <td>${score(e.values)}</td>
+        <td>${e.values?.valid == null ? '—' : Number(e.values.valid) ? '✓' : '✗'}</td>
       </tr>`,
     )
     .join('');
   return `
     <p class="crumbs"><a href="#/">All bounties</a> · <a href="#/bounty/${encodeURIComponent(c.slug || '')}">Bounty</a></p>
     <h1>Leaderboard — ${esc(c.title || '')}</h1>
-    <p class="lede">${(data.entries || []).length} ranked entries. Win rate is the judge's
-    share of pairwise wins; the table is live from the public API.</p>
+    <p class="lede">${list.length} ranked entries. ${label === 'Win rate'
+      ? 'Win rate is the judge’s share of pairwise wins;'
+      : ''} The table is live from the public API.</p>
     ${rows
-      ? `<table class="standings"><thead><tr><th>#</th><th>Entrant</th><th>Entry</th><th>Win rate</th><th>Valid</th></tr></thead><tbody>${rows}</tbody></table>`
+      ? `<table class="standings"><thead><tr><th>#</th><th>Entrant</th><th>Entry</th><th>${label}</th><th>Valid</th></tr></thead><tbody>${rows}</tbody></table>`
       : '<p>No ranked entries yet — the leaderboard fills in as entries are judged.</p>'}`;
 }
 
@@ -165,9 +181,9 @@ export function profile(p) {
       ${p.github_login ? `<dt>GitHub</dt><dd>${esc(p.github_login)}</dd>` : ''}
       ${p.x ? `<dt>X</dt><dd>${esc(p.x)}</dd>` : ''}
       ${p.joined_at ? `<dt>Joined</dt><dd>${date(p.joined_at)}</dd>` : ''}
-      <dt>Competitions entered</dt><dd>${Number(rec.competitions_entered || 0)}</dd>
-      <dt>Placements</dt><dd>${Number(rec.competitions_placed || 0)}</dd>
-      <dt>Wins</dt><dd>${Number(rec.competitions_won || 0)}</dd>
+      <dt>Competitions entered</dt><dd>${compact(rec.competitions_entered || 0)}</dd>
+      <dt>Placements</dt><dd>${compact(rec.competitions_placed || 0)}</dd>
+      <dt>Wins</dt><dd>${compact(rec.competitions_won || 0)}</dd>
       <dt>Prize money</dt><dd>${money(rec.prize_usd || 0)}</dd>
     </dl>
     <h2>Entries</h2>
@@ -184,32 +200,53 @@ export function profile(p) {
 }
 
 /** A small markdown renderer for the API's description and rules text:
- *  headings, bold, code, links and dash lists. Input is escaped first, so
- *  no HTML from the API ever reaches the page unescaped. */
+ *  headings, bold, italic, code (inline and fenced), links, dash and
+ *  numbered lists, and blockquotes. Input is escaped first, so no HTML
+ *  from the API ever reaches the page unescaped. */
 export function md(text) {
   const inline = (s) =>
     s
       .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2">$1</a>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*\n]+)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>');
   const out = [];
-  let list = null;
+  let list = null; // 'ul' | 'ol' | null
+  let fence = null;
+  const closeList = () => {
+    if (list) { out.push(`</${list}>`); list = null; }
+  };
   for (const raw of String(text).split('\n')) {
     const line = esc(raw);
+    if (line.trim().startsWith('```')) {
+      if (fence) { out.push('</code></pre>'); fence = null; }
+      else { closeList(); out.push('<pre><code>'); fence = true; }
+      continue;
+    }
+    if (fence) { out.push(`${line}\n`); continue; }
     const head = line.match(/^(#{1,3})\s+(.*)$/);
+    const quote = line.match(/^&gt;\s+(.*)$/);
+    const ordered = line.match(/^\d+[.)]\s+(.*)$/);
     if (head) {
-      if (list) { out.push('</ul>'); list = null; }
+      closeList();
       out.push(`<h${head[1].length + 1}>${inline(head[2])}</h${head[1].length + 1}>`);
+    } else if (quote) {
+      closeList();
+      out.push(`<blockquote><p>${inline(quote[1])}</p></blockquote>`);
     } else if (/^[-*]\s+/.test(line)) {
-      if (!list) { out.push('<ul>'); list = true; }
+      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
       out.push(`<li>${inline(line.replace(/^[-*]\s+/, ''))}</li>`);
+    } else if (ordered) {
+      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+      out.push(`<li>${inline(ordered[1])}</li>`);
     } else if (line.trim() === '') {
-      if (list) { out.push('</ul>'); list = null; }
+      closeList();
     } else {
-      if (list) { out.push('</ul>'); list = null; }
+      closeList();
       out.push(`<p>${inline(line)}</p>`);
     }
   }
-  if (list) out.push('</ul>');
+  if (fence) out.push('</code></pre>');
+  closeList();
   return out.join('');
 }

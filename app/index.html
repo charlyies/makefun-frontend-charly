@@ -4,15 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="A fast, read-only frontend for make.fun bounties: the live board, bounty pages, leaderboards and public profiles.">
+<meta name="theme-color" content="#0b5cad">
 <title>Open bounties · make.fun board</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="style.css">
 <script type="module" src="main.js"></script>
 </head>
 <body>
+<a class="skip-link" href="#app">Skip to content</a>
 <header>
   <a class="brand" href="#/">make.fun board</a>
-  <nav>
+  <nav aria-label="Main">
     <a href="#/">Bounties</a>
     <span class="handle-search">
       <input id="handle-search" type="search" placeholder="Profile handle…" aria-label="Profile handle" autocomplete="off">
@@ -20,7 +22,8 @@
     </span>
   </nav>
 </header>
-<main id="app"><p>Loading…</p></main>
+<main id="app" aria-live="polite"><p>Loading…</p></main>
+<noscript><p>This board needs JavaScript: it fetches the live bounties from make.fun's public API in your browser. <a href="https://make.fun/bounty/makefun-frontend-01">See the bounties on make.fun instead →</a></p></noscript>
 <footer>
   <span id="stats">0 requests</span> · Read-only: data from make.fun's public API, no sign-in.
   <a href="https://make.fun/bounty/makefun-frontend-01">This bounty on make.fun</a>

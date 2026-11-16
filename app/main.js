@@ -8,8 +8,11 @@
 // window.__shotReady is false while a route loads and true once its data is
 // on screen, so a screenshot script knows when to capture. Time-left labels
 // tick once a minute by updating only their own text, never the whole page.
+// Hovering (or keyboard-focusing) a board row prefetches that bounty's page
+// in the background, so the click that follows usually renders from cache.
+// '/' focuses the board filter; Escape clears it.
 
-import { getBounties, getBounty, getLeaderboard, getProfile, getSubmissions, stats } from './api.js';
+import { getBounties, getBounty, getLeaderboard, getProfile, getSubmissions, prefetchBounty, stats } from './api.js';
 import { board, boardRows, bounty, entryRow, leaderboard, profile } from './views.js';
 import { stillOpen, timeLeft } from './format.js';
 
@@ -19,15 +22,23 @@ let boardData = null;
 let entryLimit = 20;
 let currentSlug = null;
 
+function statsLine() {
+  const failed = stats.errors ? ` · ${stats.errors} failed` : '';
+  return `${stats.sent} requests · ${stats.revalidated} revalidated (304)${failed}`;
+}
+
 function show(html) {
   app.innerHTML = html;
-  footerStats.textContent = `${stats.sent} requests · ${stats.revalidated} revalidated (304)`;
+  footerStats.textContent = statsLine();
   window.scrollTo(0, 0);
 }
 
 function fail(err) {
+  document.title = 'Something went wrong · make.fun board';
   show(`<h1>Something went wrong</h1><p>make.fun's API did not answer. Check the
-    connection and try again.</p><p class="dim">${String(err?.message || err)}</p>`);
+    connection and try again.</p><p class="dim">${String(err?.message || err)}</p>
+    <p><button id="retry" type="button">Try again</button></p>`);
+  document.getElementById('retry')?.addEventListener('click', render);
   window.__shotReady = true;
 }
 
@@ -63,7 +74,7 @@ function applyBoardFilter() {
   const items = sortBoard(boardData.items || [], key).filter((b) => {
     if (openOnly && !stillOpen(b)) return false;
     if (!q) return true;
-    return `${b.title} ${b.category || ''} ${b.sponsor?.name || ''}`.toLowerCase().includes(q);
+    return `${b.title} ${b.category || ''} ${b.sponsor?.name || ''} ${(b.skills || []).join(' ')}`.toLowerCase().includes(q);
   });
   const list = document.getElementById('board-list');
   const count = document.getElementById('board-count');
@@ -111,6 +122,7 @@ async function loadEntries() {
     box.innerHTML = items.length
       ? `<ul class="board">${items.map(entryRow).join('')}</ul>`
       : '<p>No entries yet.</p>';
+    footerStats.textContent = statsLine();
   } catch {
     box.innerHTML = '<p>Entries could not be loaded.</p>';
   }
@@ -133,6 +145,7 @@ async function renderLeaderboard(slug) {
 }
 
 async function renderProfile(handle) {
+  if (!handle) return renderBoard();
   try {
     const p = await getProfile(handle);
     document.title = `@${p.handle} · make.fun board`;
@@ -153,6 +166,7 @@ async function render() {
   if (m) return renderBounty(decodeURIComponent(m[1]));
   m = hash.match(/^#\/profile\/([^/]+)\/?$/);
   if (m) return renderProfile(decodeURIComponent(m[1]));
+  if (/^#\/profile\/?$/.test(hash)) return renderBoard();
   return renderBoard();
 }
 
@@ -164,6 +178,35 @@ document.getElementById('handle-search')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     const handle = e.target.value.trim();
     if (handle) location.hash = `#/profile/${encodeURIComponent(handle)}`;
+  }
+});
+
+/** '/' focuses the board filter (when the reader is not already typing);
+ *  Escape clears it. Hovering or focusing a board row prefetches its bounty. */
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement?.tagName;
+  if (e.key === '/' && tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') {
+    const filter = document.getElementById('filter');
+    if (filter) { e.preventDefault(); filter.focus(); }
+  }
+  if (e.key === 'Escape' && document.activeElement?.id === 'filter') {
+    document.activeElement.value = '';
+    applyBoardFilter();
+    document.activeElement.blur();
+  }
+});
+app.addEventListener('mouseover', (e) => {
+  const link = e.target.closest('a.row-title');
+  if (link) {
+    const m = link.getAttribute('href')?.match(/^#\/bounty\/([^/]+)$/);
+    if (m) prefetchBounty(decodeURIComponent(m[1]));
+  }
+});
+app.addEventListener('focusin', (e) => {
+  const link = e.target.closest('a.row-title');
+  if (link) {
+    const m = link.getAttribute('href')?.match(/^#\/bounty\/([^/]+)$/);
+    if (m) prefetchBounty(decodeURIComponent(m[1]));
   }
 });
 

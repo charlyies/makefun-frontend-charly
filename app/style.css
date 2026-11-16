@@ -1,5 +1,6 @@
 /* A fast make.fun frontend: one small stylesheet, system fonts, no framework.
-   Layout collapses to a single column under 720px so it works on a phone. */
+   Layout collapses to a single column under 720px so it works on a phone.
+   Focus is always visible; motion respects prefers-reduced-motion. */
 
 :root {
   --ink: #17171c;
@@ -10,9 +11,16 @@
   --good: #137a3f;
   --good-soft: #e2f4e8;
   --warn-soft: #fdeeee;
+  --gold: #8a6d00;
+  --gold-soft: #fdf3c4;
+  --silver-soft: #eef0f2;
+  --bronze: #7a4a12;
+  --bronze-soft: #fbeedd;
 }
 
 * { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
 
 body {
   margin: 0 auto;
@@ -22,6 +30,22 @@ body {
   color: var(--ink);
   background: #fff;
 }
+
+/* Keyboard focus is always visible, on every control. */
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* Skip link: first Tab stop, jumps past the header to the content. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--accent);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 0 0 6px 0;
+  z-index: 10;
+}
+.skip-link:focus { left: 0; color: #fff; }
 
 header {
   display: flex;
@@ -49,6 +73,14 @@ input, select, button {
 }
 button { cursor: pointer; background: var(--accent-soft); border-color: #bcd6ef; }
 button:hover { background: #d6e8fa; }
+kbd {
+  background: #f2f2f5;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 5px;
+  font: 0.85em ui-monospace, monospace;
+}
 
 h1 { font-size: 1.6rem; line-height: 1.25; margin: 24px 0 8px; }
 h2 { font-size: 1.2rem; margin: 28px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
@@ -65,6 +97,18 @@ h2 { font-size: 1.2rem; margin: 28px 0 8px; border-bottom: 1px solid var(--line)
 }
 .toolbar label { display: flex; gap: 8px; align-items: center; color: var(--dim); }
 .count { color: var(--dim); margin: 4px 0 12px; }
+
+/* Skills chips, shown under a bounty title and on its page. */
+.skills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.chip {
+  font-size: 0.8rem;
+  color: var(--dim);
+  background: #f2f2f5;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
 
 .board { list-style: none; padding: 0; margin: 0; }
 .row {
@@ -109,6 +153,13 @@ th { color: var(--dim); font-size: 0.875rem; text-transform: uppercase; letter-s
 .rewards td:nth-child(2), .standings td:nth-child(4) { font-weight: 600; }
 .standings td:first-child { font-weight: 700; }
 
+/* The leaderboard's top three stand out; first place reads gold. */
+.standings tr.rank-1 td:first-child { color: var(--gold); }
+.standings tr.rank-1 { background: var(--gold-soft); }
+.standings tr.rank-2 { background: var(--silver-soft); }
+.standings tr.rank-3 { background: var(--bronze-soft); }
+.standings tr.rank-3 td:first-child { color: var(--bronze); }
+
 .who { display: flex; align-items: center; gap: 8px; }
 .avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; vertical-align: middle; }
 h1 .avatar { width: 44px; height: 44px; }
@@ -123,6 +174,13 @@ h1 .avatar { width: 44px; height: 44px; }
 .prose h4 { font-size: 1rem; margin: 16px 0 6px; }
 .prose code { background: #f2f2f5; padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
 .prose pre { background: #f2f2f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+.prose pre code { background: none; padding: 0; }
+.prose blockquote {
+  margin: 12px 0;
+  padding: 4px 16px;
+  border-left: 3px solid var(--line);
+  color: var(--dim);
+}
 
 footer {
   margin-top: 40px;
@@ -142,4 +200,11 @@ footer {
   .facts dd { margin-bottom: 8px; }
   table { display: block; overflow-x: auto; }
   h1 { font-size: 1.35rem; }
+  .handle-search { width: 100%; }
+  .handle-search input { flex: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
 }

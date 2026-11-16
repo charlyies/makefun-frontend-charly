@@ -12,8 +12,14 @@
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+//
+// Before it copies anything it refuses a hand-in the scorer would refuse:
+// screenshots/ must hold exactly 3 images, each at most 256 KiB. The run
+// prints a short summary (files copied, dossier bytes) so a bad hand-in is
+// visible at a glance; the output itself stays deterministic (no timestamps
+// or randomness in what it writes).
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
@@ -21,16 +27,27 @@ import { buildDossier } from './vendor/makefun-frontend.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+const shotsDir = join(here, 'screenshots');
+if (!existsSync(shotsDir)) throw new Error('screenshots/ is missing: take the 3 screenshots first');
+const shots = readdirSync(shotsDir).filter((f) => !f.startsWith('.') && statSync(join(shotsDir, f)).isFile());
+if (shots.length !== 3) throw new Error(`screenshots/ holds ${shots.length} files, expected exactly 3`);
+for (const shot of shots) {
+  const size = statSync(join(shotsDir, shot)).size;
+  if (size > 262144) throw new Error(`screenshots/${shot} is ${size} bytes, over the 256 KiB cap`);
+}
+
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'app'), join(out, 'app'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
-if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+cpSync(shotsDir, join(out, 'screenshots'), { recursive: true });
 
 // The scorer's own caps (from the kit): only text_max_bytes shapes the
 // bytes; the rest refuse an entry the scorer would refuse — more than 3
 // screenshots or one over 256 KiB; more than 993 files and directories in
 // app/ or 16 MiB of app files, counted beside /output's own 1000-entry cap.
-writeFileSync(
-  join(out, 'dossier.json'),
-  buildDossier(out, { text_max_bytes: 163840, screenshots: { max: 3, max_bytes: 262144 }, app_max_files: 993, app_max_bytes: 16777216 }),
-);
+const dossier = buildDossier(out, { text_max_bytes: 163840, screenshots: { max: 3, max_bytes: 262144 }, app_max_files: 993, app_max_bytes: 16777216 });
+writeFileSync(join(out, 'dossier.json'), dossier);
+
+const appFiles = readdirSync(join(out, 'app'), { recursive: true }).length;
+console.log(`handed in ${appFiles} app entries + ${shots.length} screenshots (${shots.join(', ')})`);
+console.log(`dossier.json: ${Buffer.byteLength(dossier)} bytes -> ${out}`);

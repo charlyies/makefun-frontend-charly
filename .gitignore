@@ -1,2 +1,4 @@
 out/
 chrome-profile*
+*.log
+.DS_Store
