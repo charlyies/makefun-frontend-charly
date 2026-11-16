@@ -1,0 +1,145 @@
+/* A fast make.fun frontend: one small stylesheet, system fonts, no framework.
+   Layout collapses to a single column under 720px so it works on a phone. */
+
+:root {
+  --ink: #17171c;
+  --dim: #5b5b66;
+  --line: #e4e4e8;
+  --accent: #0b5cad;
+  --accent-soft: #e8f1fb;
+  --good: #137a3f;
+  --good-soft: #e2f4e8;
+  --warn-soft: #fdeeee;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  max-width: 1020px;
+  padding: 0 16px 48px;
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: #fff;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand { font-weight: 700; font-size: 1.15rem; color: var(--ink); text-decoration: none; }
+nav { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+a { color: var(--accent); }
+a:hover { text-decoration-thickness: 2px; }
+
+.handle-search { display: flex; gap: 6px; }
+input, select, button {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+}
+button { cursor: pointer; background: var(--accent-soft); border-color: #bcd6ef; }
+button:hover { background: #d6e8fa; }
+
+h1 { font-size: 1.6rem; line-height: 1.25; margin: 24px 0 8px; }
+h2 { font-size: 1.2rem; margin: 28px 0 8px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.lede { color: var(--dim); max-width: 70ch; }
+.dim { color: var(--dim); }
+.crumbs { margin: 16px 0 0; color: var(--dim); }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin: 16px 0 8px;
+}
+.toolbar label { display: flex; gap: 8px; align-items: center; color: var(--dim); }
+.count { color: var(--dim); margin: 4px 0 12px; }
+
+.board { list-style: none; padding: 0; margin: 0; }
+.row {
+  display: grid;
+  grid-template-columns: 1fr 7.5em 7.5em 8em 7.5em auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.row-title { font-weight: 600; overflow-wrap: anywhere; }
+.row-meta { color: var(--dim); font-size: 0.875rem; }
+.row-pot { font-weight: 700; text-align: right; white-space: nowrap; }
+.row-fee, .row-time, .row-entries { text-align: right; white-space: nowrap; font-size: 0.925rem; }
+
+.badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.badge.open { background: var(--good-soft); color: var(--good); }
+.badge.closed { background: var(--warn-soft); color: #8a2a2a; }
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 20px;
+  background: #fafafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+.facts dt { font-weight: 600; }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { color: var(--dim); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.rewards td:nth-child(2), .standings td:nth-child(4) { font-weight: 600; }
+.standings td:first-child { font-weight: 700; }
+
+.who { display: flex; align-items: center; gap: 8px; }
+.avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; vertical-align: middle; }
+h1 .avatar { width: 44px; height: 44px; }
+.noavatar {
+  display: inline-flex; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent);
+  align-items: center; justify-content: center; font-weight: 700;
+}
+
+.prose { max-width: 75ch; overflow-wrap: anywhere; }
+.prose h3 { font-size: 1.05rem; margin: 20px 0 6px; }
+.prose h4 { font-size: 1rem; margin: 16px 0 6px; }
+.prose code { background: #f2f2f5; padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+.prose pre { background: #f2f2f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+
+footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 0.875rem;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+  .row { grid-template-columns: 1fr auto; grid-auto-rows: auto; }
+  .row-pot, .row-fee, .row-time, .row-entries { text-align: left; }
+  .facts { grid-template-columns: 1fr; gap: 2px; }
+  .facts dd { margin-bottom: 8px; }
+  table { display: block; overflow-x: auto; }
+  h1 { font-size: 1.35rem; }
+}
